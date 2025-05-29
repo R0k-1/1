@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Heart</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive, monospace;
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .game-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 1;
+        }
+
+        .matrix-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .flappy-game {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.5);
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 10px;
+            font-family: 'Press Start 2P', cursive, monospace;
+            color: #fff;
+        }
+
+        .score {
+            padding: 5px 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .game-board {
+            position: relative;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 2px solid #ff3366;
+            border-radius: 5px;
+            overflow: hidden;
+            width: 400px;
+            height: 600px;
+        }
+
+        .heart {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: #ff3366;
+            border-radius: 50%;
+            animation: pulse 0.8s infinite;
+        }
+
+        .pipe {
+            position: absolute;
+            width: 60px;
+            background-color: #00cc00;
+            border: 2px solid #008800;
+        }
+
+        .pipe-top {
+            top: 0;
+        }
+
+        .pipe-bottom {
+            bottom: 0;
+        }
+
+        .game-menu, .game-over {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px;
+            background-color: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.5);
+            color: #fff;
+            font-family: 'Press Start 2P', cursive, monospace;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .game-menu h1, .game-over h1 {
+            color: #ff3366;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 51, 102, 0.7);
+        }
+
+        .game-rules {
+            margin: 20px 0;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .start-button, .game-over-buttons button {
+            padding: 12px 24px;
+            background-color: #ff3366;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive, monospace;
+            font-size: 16px;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+
+        .start-button:hover, .game-over-buttons button:hover {
+            background-color: #ff5c8d;
+            transform: scale(1.05);
+        }
+
+        .game-over-buttons {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .game-results {
+            margin: 20px 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Пиксельный стиль */
+        @media (min-resolution: 1dppx) {
+            .heart, .pipe {
+                image-rendering: pixelated;
+            }
+        }
+
+        /* Анимация пульсации */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* Скрытие элементов */
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrixCanvas" class="matrix-background"></canvas>
+    
+    <div class="game-wrapper">
+        <div class="flappy-game">
+            <!-- Меню игры -->
+            <div id="gameMenu" class="game-menu">
+                <h1>Flappy Heart</h1>
+                <div class="game-rules">
+                    <h2>Правила игры:</h2>
+                    <p>Нажимайте на пробел или кликайте мышкой, чтобы сердечко подпрыгивало</p>
+                    <p>Пролетайте между трубами, не касаясь их</p>
+                    <p>За каждую пройденную трубу вы получаете 1 очко</p>
+                </div>
+                <button id="startBtn" class="start-button">Начать игру</button>
+            </div>
+            
+            <!-- Игровое поле -->
+            <div id="gameContainer" class="game-container hidden">
+                <div class="game-info">
+                    <div id="scoreDisplay" class="score">Счет: 0</div>
+                </div>
+                <div id="gameBoard" class="game-board">
+                    <div id="heart" class="heart"></div>
+                </div>
+            </div>
+            
+            <!-- Экран завершения игры -->
+            <div id="gameOver" class="game-over hidden">
+                <h1>Игра окончена!</h1>
+                <div class="game-results">
+                    <p id="finalScore">Ваш счет: 0</p>
+                    <p id="bestScore">Лучший счет: 0</p>
+                </div>
+                <div class="game-over-buttons">
+                    <button id="playAgainBtn">Играть снова</button>
+                    <button id="menuBtn">В меню</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Константы игры
+        const GRAVITY = 0.5;
+        const JUMP_FORCE = -10;
+        const PIPE_SPEED = 2;
+        const PIPE_SPAWN_RATE = 2000; // мс
+        const PIPE_GAP = 150;
+        const GAME_WIDTH = 400;
+        const GAME_HEIGHT = 600;
+
+        // Состояния игры
+        let gameState = 'menu'; // 'menu', 'playing', 'gameover'
+        let heart = {
+            x: 100,
+            y: 300,
+            width: 30,
+            height: 30,
+            velocity: 0
+        };
+        let pipes = [];
+        let score = 0;
+        let bestScore = 0;
+        let frameId = null;
+        let pipeInterval = null;
+        
+        // DOM элементы
+        const gameMenu = document.getElementById('gameMenu');
+        const gameContainer = document.getElementById('gameContainer');
+        const gameOver = document.getElementById('gameOver');
+        const gameBoard = document.getElementById('gameBoard');
+        const heartElement = document.getElementById('heart');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const finalScore = document.getElementById('finalScore');
+        const bestScoreDisplay = document.getElementById('bestScore');
+        
+        // Кнопки
+        const startBtn = document.getElementById('startBtn');
+        const playAgainBtn = document.getElementById('playAgainBtn');
+        const menuBtn = document.getElementById('menuBtn');
+
+        // Инициализация матричного фона
+        const canvas = document.getElementById("matrixCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Размер канваса на полный экран
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Символы для эффекта матрицы (сердечки)
+        const symbols = "♥".split("");
+
+        // Размер шрифта
+        const fontSize = 15;
+        const columns = canvas.width / fontSize; // Количество колонок по ширине
+
+        // Массив для хранения позиций символов
+        const drops = [];
+
+        // Заполняем массив начальными значениями
+        for (let x = 0; x < columns; x++) {
+            drops[x] = 1;
+        }
+
+        // Функция рисования символов
+        function drawMatrix() {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "#ff3366";
+            ctx.font = `${fontSize}px arial`;
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = symbols[Math.floor(Math.random() * symbols.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+
+                drops[i]++;
+            }
+        }
+
+        // Запускаем анимацию матрицы
+        let matrixInterval = setInterval(drawMatrix, 35);
+
+        // Функция для переключения между экранами
+        function setGameState(state) {
+            gameState = state;
+            
+            // Скрываем все экраны
+            gameMenu.classList.add('hidden');
+            gameContainer.classList.add('hidden');
+            gameOver.classList.add('hidden');
+            
+            // Показываем нужный экран
+            if (state === 'menu') {
+                gameMenu.classList.remove('hidden');
+                // Запускаем анимацию матрицы
+                if (!matrixInterval) {
+                    matrixInterval = setInterval(drawMatrix, 35);
+                }
+            } else if (state === 'playing') {
+                gameContainer.classList.remove('hidden');
+                // Оставляем анимацию матрицы для фона
+            } else if (state === 'gameover') {
+                gameOver.classList.remove('hidden');
+                // Запускаем анимацию матрицы
+                if (!matrixInterval) {
+                    matrixInterval = setInterval(drawMatrix, 35);
+                }
+            }
+        }
+
+        // Инициализация игры
+        function initGame() {
+            // Сброс состояний
+            heart = {
+                x: 100,
+                y: 300,
+                width: 30,
+                height: 30,
+                velocity: 0
+            };
+            pipes = [];
+            score = 0;
+            
+            // Обновление отображения
+            updateScoreDisplay();
+            updateHeartPosition();
+            
+            // Очистка игрового поля от труб
+            const oldPipes = document.querySelectorAll('.pipe');
+            oldPipes.forEach(pipe => pipe.remove());
+            
+            // Запуск игрового цикла и генерации труб
+            startGameLoop();
+            startPipeGeneration();
+            
+            // Переход в состояние игры
+            setGameState('playing');
+        }
+
+        // Запуск игрового цикла
+        function startGameLoop() {
+            if (frameId) {
+                cancelAnimationFrame(frameId);
+            }
+            
+            function gameLoop() {
+                if (gameState !== 'playing') return;
+                
+                // Обновление позиции сердечка
+                heart.velocity += GRAVITY;
+                heart.y += heart.velocity;
+                
+                // Проверка столкновения с границами
+                if (heart.y < 0) {
+                    heart.y = 0;
+                    heart.velocity = 0;
+                }
+                
+                if (heart.y + heart.height > GAME_HEIGHT) {
+                    endGame();
+                    return;
+                }
+                
+                // Обновление позиции труб
+                updatePipes();
+                
+                // Проверка столкновений
+                checkCollisions();
+                
+                // Обновление отображения
+                updateHeartPosition();
+                
+                // Продолжение цикла
+                frameId = requestAnimationFrame(gameLoop);
+            }
+            
+            frameId = requestAnimationFrame(gameLoop);
+        }
+
+        // Запуск генерации труб
+        function startPipeGeneration() {
+            if (pipeInterval) {
+                clearInterval(pipeInterval);
+            }
+            
+            pipeInterval = setInterval(() => {
+                if (gameState !== 'playing') return;
+                
+                generatePipe();
+            }, PIPE_SPAWN_RATE);
+        }
+
+        // Генерация новой трубы
+        function generatePipe() {
+            const pipeHeight = Math.floor(Math.random() * (GAME_HEIGHT - PIPE_GAP - 200)) + 100;
+            
+            const topPipe = document.createElement('div');
+            topPipe.className = 'pipe pipe-top';
+            topPipe.style.height = `${pipeHeight}px`;
+            topPipe.style.left = `${GAME_WIDTH}px`;
+            gameBoard.appendChild(topPipe);
+            
+            const bottomPipe = document.createElement('div');
+            bottomPipe.className = 'pipe pipe-bottom';
+            bottomPipe.style.height = `${GAME_HEIGHT - pipeHeight - PIPE_GAP}px`;
+            bottomPipe.style.left = `${GAME_WIDTH}px`;
+            gameBoard.appendChild(bottomPipe);
+            
+            pipes.push({
+                x: GAME_WIDTH,
+                topHeight: pipeHeight,
+                bottomY: pipeHeight + PIPE_GAP,
+                width: 60,
+                passed: false,
+                elements: {
+                    top: topPipe,
+                    bottom: bottomPipe
+                }
+            });
+        }
+
+        // Обновление позиции труб
+        function updatePipes() {
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                const pipe = pipes[i];
+                pipe.x -= PIPE_SPEED;
+                
+                // Обновление отображения
+                pipe.elements.top.style.left = `${pipe.x}px`;
+                pipe.elements.bottom.style.left = `${pipe.x}px`;
+                
+                // Проверка прохождения трубы
+                if (!pipe.passed && pipe.x + pipe.width < heart.x) {
+                    pipe.passed = true;
+                    score++;
+                    updateScoreDisplay();
+                }
+                
+                // Удаление труб, вышедших за пределы экрана
+                if (pipe.x + pipe.width < 0) {
+                    gameBoard.removeChild(pipe.elements.top);
+                    gameBoard.removeChild(pipe.elements.bottom);
+                    pipes.splice(i, 1);
+                }
+            }
+        }
+
+        // Проверка столкновений
+        function checkCollisions() {
+            for (const pipe of pipes) {
+                // Проверка столкновения с верхней трубой
+                if (
+                    heart.x + heart.width > pipe.x &&
+                    heart.x < pipe.x + pipe.width &&
+                    heart.y < pipe.topHeight
+                ) {
+                    endGame();
+                    return;
+                }
+                
+                // Проверка столкновения с нижней трубой
+                if (
+                    heart.x + heart.width > pipe.x &&
+                    heart.x < pipe.x + pipe.width &&
+                    heart.y + heart.height > pipe.bottomY
+                ) {
+                    endGame();
+                    return;
+                }
+            }
+        }
+
+        // Прыжок сердечка
+        function jump() {
+            if (gameState !== 'playing') return;
+            
+            heart.velocity = JUMP_FORCE;
+        }
+
+        // Завершение игры
+        function endGame() {
+            // Остановка игрового цикла и генерации труб
+            if (frameId) {
+                cancelAnimationFrame(frameId);
+                frameId = null;
+            }
+            
+            if (pipeInterval) {
+                clearInterval(pipeInterval);
+                pipeInterval = null;
+            }
+            
+            // Обновление лучшего счета
+            if (score > bestScore) {
+                bestScore = score;
+            }
+            
+            // Обновление экрана завершения
+            finalScore.textContent = `Ваш счет: ${score}`;
+            bestScoreDisplay.textContent = `Лучший счет: ${bestScore}`;
+            
+            // Переход в состояние завершения игры
+            setGameState('gameover');
+        }
+
+        // Обновление отображения счета
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `Счет: ${score}`;
+        }
+
+        // Обновление позиции сердечка
+        function updateHeartPosition() {
+            heartElement.style.top = `${heart.y}px`;
+        }
+
+        // Обработчики событий
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                jump();
+            }
+        });
+
+        gameBoard.addEventListener('click', () => {
+            jump();
+        });
+
+        // Обработчики кнопок
+        startBtn.addEventListener('click', initGame);
+        playAgainBtn.addEventListener('click', initGame);
+        menuBtn.addEventListener('click', () => setGameState('menu'));
+
+        // Инициализация начального состояния
+        setGameState('menu');
+    </script>
+</body>
+</html>
